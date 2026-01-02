@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Giám Sát Thuyền Biển</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            height: calc(100vh - 70px);
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: #1f2937;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 4px 0 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- FORM NHẬP LIỆU --- */
+        .weather-form {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #4b5563;
+            text-transform: uppercase;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            background: white;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .col {
+            flex: 1;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* --- STATS --- */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .stat-card.emergency {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .stat-card h3 {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 24px 0 12px 0;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #f3f4f6;
+            padding-bottom: 5px;
+        }
+
+        /* --- ITEM LISTS --- */
+        .boat-item,
+        .weather-item {
+            background: white;
+            padding: 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+            border: 1px solid #f3f4f6;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .boat-item.normal {
+            border-left: 4px solid #4facfe;
+        }
+
+        .boat-item.emergency {
+            border-left: 4px solid #f5576c;
+            animation: pulse 2s infinite;
+            background: #fff5f5;
+        }
+
+        .boat-item:hover,
+        .weather-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .boat-id {
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 4px;
+            color: #1f2937;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .alert-badge {
+            display: inline-block;
+            background: #f5576c;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+
+        .btn-delete {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #fee2e2;
+            color: #ef4444;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-delete:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f3f4f6; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🚢 Hệ Thống Giám Sát Thuyền Biển</h1>
+        <div style="font-size: 12px; opacity: 0.8;">Admin Dashboard</div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="section-title">⚡ Phát Cảnh Báo Thiên Tai</div>
+            <div class="weather-form">
+                <div class="form-group">
+                    <label class="form-label">Loại Thiên Tai</label>
+                    <select id="wType" class="form-control">
+                        <option value="STORM">Bão / Áp thấp</option>
+                        <option value="HIGH_WAVES">Sóng lớn</option>
+                        <option value="TSUNAMI">Cảnh báo sóng thần</option>
+                        <option value="FOG">Sương mù dày đặc</option>
+                    </select>
+                </div>
+
+                <div class="row form-group">
+                    <div class="col">
+                        <label class="form-label">Mức độ</label>
+                        <select id="wSeverity" class="form-control">
+                            <option value="MEDIUM">Vừa</option>
+                            <option value="HIGH">Cao (Nguy hiểm)</option>
+                            <option value="LOW">Thấp</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label class="form-label">Bán kính (Km)</label>
+                        <input type="number" id="wRadius" class="form-control" value="50">
+                    </div>
+                </div>
+
+                <div class="row form-group">
+                    <div class="col">
+                        <label class="form-label">Vĩ độ (Lat)</label>
+                        <input type="number" step="any" id="wLat" class="form-control" placeholder="Click map">
+                    </div>
+                    <div class="col">
+                        <label class="form-label">Kinh độ (Lon)</label>
+                        <input type="number" step="any" id="wLon" class="form-control" placeholder="Click map">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nội dung cảnh báo</label>
+                    <input type="text" id="wMessage" class="form-control" placeholder="VD: Bão cấp 12 hướng Tây Bắc...">
+                </div>
+
+                <button onclick="sendWeatherAlert()" class="btn-submit">🚀 Gửi Cảnh Báo</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>Tổng Thuyền</h3>
+                    <div class="value" id="totalBoats">0</div>
+                </div>
+                <div class="stat-card emergency">
+                    <h3>Khẩn Cấp</h3>
+                    <div class="value" id="emergencyBoats">0</div>
+                </div>
+            </div>
+
+            <div class="section-title">🌊 Cảnh Báo Thời Tiết</div>
+            <div id="weatherList"></div>
+
+            <div class="section-title">📋 Danh Sách Thuyền</div>
+            <div id="boatList"></div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        const BACKEND_URL = '';
+        const map = L.map('map').setView([16.0544, 108.2022], 10);
+        
+        const islandLabelStyle = `
+            font-size: 14px;
+            font-weight: 700;
+            color: #dc2626;
+            text-shadow: 1px 1px 3px white;
+            white-space: nowrap;
+        `;
+
+        L.marker([16.5, 112.0], {
+            icon: L.divIcon({
+                className: '',
+                html: `<div style="${islandLabelStyle}">🇻🇳 QĐ. Hoàng Sa</div>`
+            })
+        }).addTo(map);
+
+        L.marker([9.5, 113.5], {
+            icon: L.divIcon({
+                className: '',
+                html: `<div style="${islandLabelStyle}">🇻🇳 QĐ. Trường Sa</div>`
+            })
+        }).addTo(map);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        const markers = {};
+        const weatherCircles = {};
+        const tempLayer = L.layerGroup().addTo(map);
+
+        const normalIcon = L.icon({
+            iconUrl: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+                <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="#4facfe" stroke="white" stroke-width="3"/>
+                    <path d="M12 22 L20 12 L28 22 L20 26 Z" fill="white"/>
+                    <rect x="18" y="22" width="4" height="8" fill="white"/>
+                </svg>`),
+            iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20]
+        });
+
+        const emergencyIcon = L.icon({
+            iconUrl: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+                <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" fill="#f5576c" stroke="white" stroke-width="3"/>
+                    <circle cx="20" cy="20" r="12" fill="white"/>
+                    <circle cx="20" cy="20" r="8" fill="#f5576c"/>
+                    <circle cx="20" cy="20" r="4" fill="white"/>
+                </svg>`),
+            iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20]
+        });
+
+        map.on('click', function (e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lon = e.latlng.lng.toFixed(6);
+            document.getElementById('wLat').value = lat;
+            document.getElementById('wLon').value = lon;
+
+            tempLayer.clearLayers();
+            L.marker([lat, lon], { opacity: 0.6 }).addTo(tempLayer)
+                .bindPopup("Vị trí cảnh báo dự kiến").openPopup();
+        });
+
+        async function sendWeatherAlert() {
+            const lat = document.getElementById('wLat').value;
+            const lon = document.getElementById('wLon').value;
+            const type = document.getElementById('wType').value;
+            const severity = document.getElementById('wSeverity').value;
+            const radius = document.getElementById('wRadius').value;
+            const message = document.getElementById('wMessage').value;
+
+            if (!lat || !lon || !message) {
+                alert("Thiếu thông tin! Vui lòng chọn vị trí và nhập nội dung.");
+                return;
+            }
+
+            const btn = document.querySelector('.btn-submit');
+            btn.innerText = "⏳ Đang gửi...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/publish/weather`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alert_type: type,
+                        severity: severity,
+                        radius_km: parseFloat(radius),
+                        area_lat: parseFloat(lat),
+                        area_lon: parseFloat(lon),
+                        message: message
+                    })
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    alert("✅ Đã phát cảnh báo thành công!");
+                    document.getElementById('wMessage').value = "";
+                    tempLayer.clearLayers();
+                    setTimeout(() => loadAllData(), 500);
+                } else {
+                    alert("❌ Lỗi: " + result.error);
+                }
+            } catch (err) { 
+                console.error(err);
+                alert("❌ Lỗi kết nối Server"); 
+            } finally { 
+                btn.innerText = "🚀 Gửi Cảnh Báo"; 
+                btn.disabled = false; 
+            }
+        }
+
+        async function deleteWeatherAlert(id, event) {
+            event.stopPropagation();
+            if (!confirm('Bạn có chắc chắn muốn xóa cảnh báo này?')) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/weather/${id}`, { method: 'DELETE' });
+                const result = await res.json();
+
+                if (result.success) {
+                    loadAllData();
+                } else {
+                    alert("Không thể xóa: " + result.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Lỗi kết nối khi xóa!");
+            }
+        }
+
+        async function loadAllData() {
+            try {
+                const [boatsRes, statsRes, weatherRes] = await Promise.all([
+                    fetch(`${BACKEND_URL}/api/boats`),
+                    fetch(`${BACKEND_URL}/api/stats`),
+                    fetch(`${BACKEND_URL}/api/weather`)
+                ]);
+
+                const boats = await boatsRes.json();
+                const stats = await statsRes.json();
+                const weather = await weatherRes.json();
+
+                if (boats.success) updateBoats(boats.data);
+                if (stats.success) updateStats(stats.data);
+                if (weather.success) updateWeather(weather.data);
+            } catch (error) { 
+                console.error('Lỗi tải dữ liệu:', error); 
+            }
+        }
+
+        function updateBoats(boats) {
+            const list = document.getElementById('boatList');
+            if (boats.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px; color:#999">Chưa có dữ liệu</div>';
+                return;
+            }
+
+            boats.forEach(boat => {
+                const isEmergency = boat.status === 'EMERGENCY';
+                if (markers[boat.uid]) {
+                    markers[boat.uid].setLatLng([boat.lat, boat.lon]);
+                    markers[boat.uid].setIcon(isEmergency ? emergencyIcon : normalIcon);
+                } else {
+                    const marker = L.marker([boat.lat, boat.lon], {
+                        icon: isEmergency ? emergencyIcon : normalIcon
+                    }).addTo(map);
+                    marker.bindPopup(`
+                        <div style="min-width: 180px;">
+                            <h3 style="margin:0 0 5px; color:${isEmergency ? '#f5576c' : '#4facfe'}">🚢 ${boat.uid}</h3>
+                            <p>📍 ${boat.lat.toFixed(5)}, ${boat.lon.toFixed(5)}</p> 
+                            <p>🕐 ${boat.timestamp}</p>
+                            ${isEmergency ? `<b style="color:#f5576c">🚨 ${boat.sos_type}</b>` : '<span style="color:#10b981">✅ Ổn định</span>'}
+                        </div>
+                    `);
+                    markers[boat.uid] = marker;
+                }
+            });
+
+            list.innerHTML = '';
+            boats.forEach(boat => {
+                const div = document.createElement('div');
+                div.className = `boat-item ${boat.status === 'EMERGENCY' ? 'emergency' : 'normal'}`;
+                div.innerHTML = `
+                    <div class="boat-id">🚢 ${boat.uid}</div>
+                    <div class="info-text">📍 ${boat.lat.toFixed(4)}, ${boat.lon.toFixed(4)} <br> 🕐 ${boat.timestamp}</div>
+                    ${boat.sos_type !== 'NORMAL' ? `<span class="alert-badge">${boat.sos_type}</span>` : ''}
+                `;
+                div.onclick = () => { map.setView([boat.lat, boat.lon], 13); markers[boat.uid].openPopup(); };
+                list.appendChild(div);
+            });
+        }
+
+        function updateWeather(alerts) {
+            const list = document.getElementById('weatherList');
+
+            Object.values(weatherCircles).forEach(layer => map.removeLayer(layer));
+            for (const key in weatherCircles) delete weatherCircles[key];
+
+            list.innerHTML = alerts.length ? '' : '<div style="text-align:center; padding:10px; color:#999; font-size:12px">Không có cảnh báo</div>';
+
+            alerts.forEach(alert => {
+                const key = alert.id;
+                const colorMap = {'HIGH': '#ef4444', 'MEDIUM': '#f59e0b', 'LOW': '#10b981'};
+                const color = colorMap[alert.severity] || '#f59e0b';
+
+                weatherCircles[key] = L.circle([alert.area_lat, alert.area_lon], {
+                    color: color, 
+                    fillColor: color, 
+                    fillOpacity: 0.2, 
+                    radius: alert.radius_km * 1000
+                }).addTo(map).bindPopup(`
+                    <div style="min-width: 200px;">
+                        <h3 style="margin:0 0 5px; color:${color}">🌊 ${alert.alert_type}</h3>
+                        <p><strong>Nguồn:</strong> ${alert.station_id}</p>
+                        <p><strong>Mức độ:</strong> <span style="color:${color}">${alert.severity}</span></p>
+                        <p>${alert.message}</p>
+                        <p>📍 ${alert.area_lat.toFixed(4)}, ${alert.area_lon.toFixed(4)}</p>
+                        <p>⭕ Bán kính: ${alert.radius_km} km</p>
+                        <p>🕐 ${alert.timestamp}</p>
+                    </div>
+                `);
+
+                const div = document.createElement('div');
+                div.className = 'weather-item';
+                div.innerHTML = `
+                    <button class="btn-delete" onclick="deleteWeatherAlert('${alert.id}', event)">Xóa</button>
+                    <div class="boat-id">🌊 ${alert.alert_type}</div>
+                    <div class="info-text">
+                        <strong>${alert.station_id}</strong><br>
+                        ${alert.message}<br>
+                        📍 Tâm: ${alert.area_lat.toFixed(2)}, ${alert.area_lon.toFixed(2)}<br>
+                        🕐 ${alert.timestamp}
+                    </div>
+                    <span class="alert-badge" style="background:${color}">${alert.severity}</span>
+                `;
+                div.onclick = (e) => {
+                    if (!e.target.classList.contains('btn-delete')) {
+                        map.setView([alert.area_lat, alert.area_lon], 9);
+                    }
+                };
+                list.appendChild(div);
+            });
+        }
+
+        function updateStats(stats) {
+            document.getElementById('totalBoats').textContent = stats.total_boats;
+            document.getElementById('emergencyBoats').textContent = stats.emergency_boats;
+        }
+
+        loadAllData();
+        setInterval(loadAllData, 3000);
+    </script>
+</body>
+</html>
