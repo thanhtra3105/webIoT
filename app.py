@@ -80,15 +80,19 @@ def handle_boat_message(payload):
             sos_type = 'SOS'
         lat = float(data.get('lat', 0))
         lon = float(data.get('lon', 0))
-        timestamp = data.get('timestamp', '')
-        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        if sos_type != "NORMAL":
+            status = "EMERGENCY"
+        else:
+            status = "NORMAL"
+
         boats_data[boat_id] = {
             'uid': boat_id,
             'sos_type': sos_type,
             'lat': lat,
             'lon': lon,
             'timestamp': timestamp,
-            'status': 'EMERGENCY' if sos_type != 'NORMAL' else 'NORMAL'
+            'status': status
         }
         
         if sos_type != 'NORMAL':

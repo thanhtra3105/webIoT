@@ -243,13 +243,29 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
         }
 
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #f3f4f6; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
     </style>
 </head>
 
@@ -332,7 +348,7 @@
     <script>
         const BACKEND_URL = '';
         const map = L.map('map').setView([16.0544, 108.2022], 10);
-        
+
         const islandLabelStyle = `
             font-size: 14px;
             font-weight: 700;
@@ -435,12 +451,12 @@
                 } else {
                     alert("❌ Lỗi: " + result.error);
                 }
-            } catch (err) { 
+            } catch (err) {
                 console.error(err);
-                alert("❌ Lỗi kết nối Server"); 
-            } finally { 
-                btn.innerText = "🚀 Gửi Cảnh Báo"; 
-                btn.disabled = false; 
+                alert("❌ Lỗi kết nối Server");
+            } finally {
+                btn.innerText = "🚀 Gửi Cảnh Báo";
+                btn.disabled = false;
             }
         }
 
@@ -478,8 +494,8 @@
                 if (boats.success) updateBoats(boats.data);
                 if (stats.success) updateStats(stats.data);
                 if (weather.success) updateWeather(weather.data);
-            } catch (error) { 
-                console.error('Lỗi tải dữ liệu:', error); 
+            } catch (error) {
+                console.error('Lỗi tải dữ liệu:', error);
             }
         }
 
@@ -490,26 +506,35 @@
                 return;
             }
 
+            // --- ĐOẠN CODE ĐÃ SỬA ---
             boats.forEach(boat => {
                 const isEmergency = boat.status === 'EMERGENCY';
+
+                // Tạo nội dung Popup trước để dùng cho cả trường hợp tạo mới và cập nhật
+                const popupContent = `
+                    <div style="min-width: 180px;">
+                        <h3 style="margin:0 0 5px; color:${isEmergency ? '#f5576c' : '#4facfe'}">🚢 ${boat.uid}</h3>
+                        <p>📍 ${boat.lat.toFixed(5)}, ${boat.lon.toFixed(5)}</p> 
+                        <p>🕐 ${boat.timestamp}</p>
+                        ${isEmergency ? `<b style="color:#f5576c">🚨 ${boat.sos_type}</b>` : '<span style="color:#10b981">An toàn</span>'}
+                    </div>
+                `;
+
                 if (markers[boat.uid]) {
+                    // Thuyền đã có trên map -> Cập nhật vị trí, Icon VÀ Popup
                     markers[boat.uid].setLatLng([boat.lat, boat.lon]);
                     markers[boat.uid].setIcon(isEmergency ? emergencyIcon : normalIcon);
+                    markers[boat.uid].setPopupContent(popupContent); // <--- THÊM DÒNG NÀY ĐỂ CẬP NHẬT TEXT
                 } else {
+                    // Thuyền mới -> Tạo marker mới
                     const marker = L.marker([boat.lat, boat.lon], {
                         icon: isEmergency ? emergencyIcon : normalIcon
                     }).addTo(map);
-                    marker.bindPopup(`
-                        <div style="min-width: 180px;">
-                            <h3 style="margin:0 0 5px; color:${isEmergency ? '#f5576c' : '#4facfe'}">🚢 ${boat.uid}</h3>
-                            <p>📍 ${boat.lat.toFixed(5)}, ${boat.lon.toFixed(5)}</p> 
-                            <p>🕐 ${boat.timestamp}</p>
-                            ${isEmergency ? `<b style="color:#f5576c">🚨 ${boat.sos_type}</b>` : '<span style="color:#10b981">✅ Ổn định</span>'}
-                        </div>
-                    `);
+                    marker.bindPopup(popupContent);
                     markers[boat.uid] = marker;
                 }
             });
+            // ------------------------
 
             list.innerHTML = '';
             boats.forEach(boat => {
@@ -535,13 +560,13 @@
 
             alerts.forEach(alert => {
                 const key = alert.id;
-                const colorMap = {'HIGH': '#ef4444', 'MEDIUM': '#f59e0b', 'LOW': '#10b981'};
+                const colorMap = { 'HIGH': '#ef4444', 'MEDIUM': '#f59e0b', 'LOW': '#10b981' };
                 const color = colorMap[alert.severity] || '#f59e0b';
 
                 weatherCircles[key] = L.circle([alert.area_lat, alert.area_lon], {
-                    color: color, 
-                    fillColor: color, 
-                    fillOpacity: 0.2, 
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.2,
                     radius: alert.radius_km * 1000
                 }).addTo(map).bindPopup(`
                     <div style="min-width: 200px;">
@@ -586,4 +611,5 @@
         setInterval(loadAllData, 3000);
     </script>
 </body>
+
 </html>
