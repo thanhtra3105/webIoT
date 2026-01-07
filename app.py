@@ -7,6 +7,7 @@ import json
 import threading
 from datetime import datetime
 import time
+import random
 
 app = Flask(__name__)
 CORS(app)
@@ -80,6 +81,8 @@ def handle_boat_message(payload):
             sos_type = 'SOS'
         lat = float(data.get('lat', 0))
         lon = float(data.get('lon', 0))
+        lat = round(lat, 5) + random.uniform(-0.0001, 0.0001)
+        lon = round(lon, 5) + random.uniform(-0.0001, 0.0001)
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if sos_type != "NORMAL":
             status = "EMERGENCY"
